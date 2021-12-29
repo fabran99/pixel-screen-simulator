@@ -1,0 +1,53 @@
+#grid-container {
+  // remove spacing from table
+  border-spacing: 0;
+  border: 1px solid black;
+  user-select: none;
+  td {
+    width: 50px;
+    height: 50px;
+    border: 1px solid black;
+    text-align: center;
+    color: rgba(0, 0, 0, 0.275);
+  }
+}
+
+.color-buttons {
+  display: flex;
+  width: 200px;
+  flex-direction: row;
+  justify-content: space-around;
+  align-items: center;
+  margin-top: 10px;
+
+  div {
+    width: 50px;
+    height: 50px;
+    border: 1px solid black;
+    opacity: 0.9;
+    cursor: pointer;
+
+    &:hover {
+      opacity: 1;
+    }
+  }
+
+  #red {
+    background-color: #ff2020;
+  }
+  #white {
+    background-color: #ffffff;
+  }
+  #blue {
+    background-color: #0b6dff;
+  }
+  #yellow {
+    background-color: #fffb19;
+  }
+  #green {
+    background-color: #33ff44;
+  }
+  #black {
+    background-color: #000000;
+  }
+}
