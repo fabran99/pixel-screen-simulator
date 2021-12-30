@@ -115,7 +115,7 @@ const getDrawing = () => {
 // when clicking get drawing button, get the drawing and log to console
 saveDrawing.addEventListener("click", () => {
   drawingList.push({
-    duration: 0.5,
+    duration: 0.1,
     drawing: getDrawing(),
   });
 });
@@ -146,3 +146,260 @@ runDrawing.addEventListener("click", async () => {
     }
   }
 });
+
+const numberPositions = [
+  [
+    [1, 1, 1],
+    [1, 0, 1],
+    [1, 0, 1],
+    [1, 0, 1],
+    [1, 1, 1],
+  ],
+  [
+    [0, 0, 1],
+    [0, 0, 1],
+    [0, 0, 1],
+    [0, 0, 1],
+    [0, 0, 1],
+  ],
+  [
+    [1, 1, 1],
+    [0, 0, 1],
+    [1, 1, 1],
+    [1, 0, 0],
+    [1, 1, 1],
+  ],
+  [
+    [1, 1, 1],
+    [0, 0, 1],
+    [1, 1, 1],
+    [0, 0, 1],
+    [1, 1, 1],
+  ],
+  [
+    [1, 0, 1],
+    [1, 0, 1],
+    [1, 1, 1],
+    [0, 0, 1],
+    [0, 0, 1],
+  ],
+  [
+    [1, 1, 1],
+    [1, 0, 0],
+    [1, 1, 1],
+    [0, 0, 1],
+    [1, 1, 1],
+  ],
+  [
+    [1, 1, 1],
+    [1, 0, 0],
+    [1, 1, 1],
+    [1, 0, 1],
+    [1, 1, 1],
+  ],
+  [
+    [1, 1, 1],
+    [0, 0, 1],
+    [0, 0, 1],
+    [0, 0, 1],
+    [0, 0, 1],
+  ],
+  [
+    [1, 1, 1],
+    [1, 0, 1],
+    [1, 1, 1],
+    [1, 0, 1],
+    [1, 1, 1],
+  ],
+  [
+    [1, 1, 1],
+    [1, 0, 1],
+    [1, 1, 1],
+    [0, 0, 1],
+    [1, 1, 1],
+  ],
+];
+
+const hourPositions = {
+  hour_ten: [0, 0],
+  hour_unit: [0, 4],
+  minute_ten: [6, 0],
+  minute_unit: [6, 4],
+};
+
+const drawNumber = (number, hourPosition) => {
+  let rowStart = hourPosition[0];
+  let colStart = hourPosition[1];
+  let currentNumberPosition = numberPositions[number];
+  for (let i = 0; i < currentNumberPosition.length; i++) {
+    let row = currentNumberPosition[i];
+    for (let j = 0; j < row.length; j++) {
+      let cell = document.getElementById(
+        (rowStart + i) * COLUMNS + colStart + j
+      );
+      if (row[j] === 1) {
+        cell.style.backgroundColor = colorSelector.value;
+      }
+    }
+  }
+};
+
+// drawNumber(2, hourPositions["hour_ten"]);
+// drawNumber(9, hourPositions["hour_unit"]);
+// drawNumber(3, hourPositions["minute_ten"]);
+// drawNumber(2, hourPositions["minute_unit"]);
+const rainbow1 = () => {
+  var myRainbow = new Rainbow();
+  myRainbow.setSpectrum("#f5520c", "#f5e50c");
+  myRainbow.setNumberRange(0, ROWS);
+  return myRainbow;
+};
+
+const generateRainbow = (c1, c2, n) => {
+  var myRainbow = new Rainbow();
+  myRainbow.setSpectrum(c1, c2);
+  myRainbow.setNumberRange(0, n);
+  return myRainbow;
+};
+
+// convert hex color to rgb, return a string in the format rgb(r,g,b)
+const hexToRgb = (hex) => {
+  var result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+  return result
+    ? `rgb(${parseInt(result[1], 16)},${parseInt(result[2], 16)},${parseInt(
+        result[3],
+        16
+      )})`
+    : null;
+};
+
+const rgbToHex = (rgb) => {
+  let components = rgb.match(/\d+/g).map((x) => parseInt(x));
+  let r = components[0];
+  let g = components[1];
+  let b = components[2];
+  return (
+    "#" +
+    [r, g, b]
+      .map((x) => {
+        const hex = x.toString(16);
+        return hex.length === 1 ? "0" + hex : hex;
+      })
+      .join("")
+  );
+};
+
+const moveColorList = (colorList, direction) => {
+  // if direction is right, put the last color in the first position and move the others to the right
+  // if direction is left, put the first color in the last position and move the others to the left
+  if (direction === "right") {
+    colorList.unshift(colorList.pop());
+  } else {
+    colorList.push(colorList.shift());
+  }
+};
+
+const shadeColor = (col, amt) => {
+  col = col.replace(/^#/, "");
+  if (col.length === 3)
+    col = col[0] + col[0] + col[1] + col[1] + col[2] + col[2];
+
+  let [r, g, b] = col.match(/.{2}/g);
+  [r, g, b] = [
+    parseInt(r, 16) + amt,
+    parseInt(g, 16) + amt,
+    parseInt(b, 16) + amt,
+  ];
+
+  r = Math.max(Math.min(255, r), 0).toString(16);
+  g = Math.max(Math.min(255, g), 0).toString(16);
+  b = Math.max(Math.min(255, b), 0).toString(16);
+
+  const rr = (r.length < 2 ? "0" : "") + r;
+  const gg = (g.length < 2 ? "0" : "") + g;
+  const bb = (b.length < 2 ? "0" : "") + b;
+
+  return `#${rr}${gg}${bb}`;
+};
+
+const drawRainbow = async (
+  color1,
+  color2,
+  direction,
+  repetitions,
+  randomizeDark
+) => {
+  let colorNumber = ["l", "r"].indexOf(direction) != -1 ? COLUMNS : ROWS;
+  let animation = [];
+
+  let rainbow = generateRainbow(color1, color2, colorNumber);
+  let colorList = [];
+  for (let i = 0; i < colorNumber; i++) {
+    colorList.push(hexToRgb("#" + rainbow.colourAt(i)));
+  }
+  colorList.push("rgb(0,0,0)");
+
+  let = currentIndex = 0;
+  let = currentRepetition = 0;
+
+  const applyCurrentColor = () => {
+    let firstPosName = ["l", "r"].indexOf(direction) != -1 ? "COLUMNS" : "ROWS";
+    let secondPosName =
+      ["l", "r"].indexOf(direction) != -1 ? "ROWS" : "COLUMNS";
+    let firstPos = firstPosName == "COLUMNS" ? COLUMNS : ROWS;
+    let secondPos = secondPosName == "COLUMNS" ? COLUMNS : ROWS;
+
+    for (let i = 0; i < firstPos; i++) {
+      // change background color of each cell to the color of the rainbow
+      for (let j = 0; j < secondPos; j++) {
+        let cellNumber =
+          firstPosName == "ROWS" ? i * COLUMNS + j : i + j * COLUMNS;
+        let cell = document.getElementById(cellNumber);
+        if (Math.random() < 0.7 || !randomizeDark) {
+          cell.style.backgroundColor = colorList[i];
+        } else {
+          let darkenColor = hexToRgb(shadeColor(rgbToHex(colorList[i]), -35));
+          cell.style.backgroundColor = darkenColor;
+        }
+      }
+    }
+    moveColorList(
+      colorList,
+      ["r", "u"].indexOf(direction) != -1 ? "left" : "right"
+    );
+    if (currentRepetition == 0) {
+      animation.push(getDrawing());
+    }
+    if (currentIndex >= colorList.length) {
+      currentIndex = 0;
+      currentRepetition++;
+    }
+    currentIndex++;
+  };
+
+  while (repetitions == 0 || currentRepetition < repetitions) {
+    applyCurrentColor();
+    await sleep(100);
+  }
+
+  // if (repetitions === -1) {
+  //   while (true) {
+  //     applyCurrentColor();
+
+  //     // wait for 1 second
+  //     await sleep(100);
+  //   }
+  // } else {
+
+  // }
+  return animation;
+};
+
+const runRainbows = async () => {
+  let animation1 = await drawRainbow("#f5520c", "#f5e50c", "d", 2, true);
+  console.log(animation1);
+  let animation2 = await drawRainbow("#0fff8b", "#0fbfff", "r", 0, true);
+  console.log(animation2);
+};
+
+runRainbows();
