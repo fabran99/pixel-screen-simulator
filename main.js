@@ -3,6 +3,7 @@ const colorSelector = document.getElementById("color-selector");
 const saveDrawing = document.getElementById("save-drawing");
 const cleanDrawing = document.getElementById("clean-drawing");
 const runDrawing = document.getElementById("run-drawing");
+const downloadAnimation = document.getElementById("download-animation");
 // color buttons with the id white, red, blue, yellow and black
 const whiteButton = document.getElementById("white");
 const redButton = document.getElementById("red");
@@ -41,8 +42,7 @@ blackButton.addEventListener("click", setColorBlack);
 greenButton.addEventListener("click", setColorGreen);
 
 const body = document.querySelector("body");
-const ROWS = 11;
-const COLUMNS = 7;
+
 var isMouseClicking = false;
 var isDrawing = false;
 
@@ -112,6 +112,92 @@ const getDrawing = () => {
   return drawing;
 };
 
+const generateOptimizedDrawing = () => {
+  let dList = drawingList.map((el) => el.drawing);
+  let optimizedDrawing = "";
+  let framesIndexes = [];
+
+  dList.forEach((drawing, dIndex) => {
+    let pixelsPerColor = [];
+    let uniqueColors = [];
+    // Get the unique colors that are not '0,0,0';
+    for (let i = 0; i < drawing.length; i++) {
+      let color = drawing[i];
+      if (color !== "0,0,0" && uniqueColors.indexOf(color) === -1) {
+        uniqueColors.push(color);
+      }
+    }
+
+    uniqueColors.forEach((color) => {
+      let currentColorPixels = [];
+      drawing.forEach((cellColor, index) => {
+        if (cellColor == color) {
+          currentColorPixels.push(index);
+        }
+      });
+      pixelsPerColor.push(currentColorPixels);
+    });
+
+    // generate a string for the optimized drawing for c++
+    optimizedDrawing += `const uint8_t dc${dIndex}[${uniqueColors.length}][3] PROGMEM={`;
+    uniqueColors.forEach((color, index) => {
+      optimizedDrawing += `{${color}}`;
+      // Add a comma if it is not the last color
+      if (index !== uniqueColors.length - 1) {
+        optimizedDrawing += ",";
+      }
+    });
+    optimizedDrawing += `};`;
+    let maxPixelsPerColor = 0;
+    pixelsPerColor.forEach((pixels) => {
+      if (pixels.length > maxPixelsPerColor) {
+        maxPixelsPerColor = pixels.length;
+      }
+    });
+    optimizedDrawing += `const uint8_t ppc${dIndex}[${uniqueColors.length}][${maxPixelsPerColor}] PROGMEM ={`;
+    pixelsPerColor.forEach((pixels, index) => {
+      // Add one to every pixel, to prevent 0
+      optimizedDrawing += `{${pixels.map((p) => p + 1).join(",")}}`;
+      // Add a comma if it is not the last color
+      if (index !== pixelsPerColor.length - 1) {
+        optimizedDrawing += ",";
+      }
+    });
+    optimizedDrawing += `};`;
+
+    // Add to frame indexes, an object with the number of unique colors and max pixels per color
+    framesIndexes.push({
+      colors: uniqueColors.length,
+      maxPixels: maxPixelsPerColor,
+    });
+  });
+
+  // add a function that runs the optimized drawing
+  optimizedDrawing += `void runOptimizedDrawing(){`;
+  dList.forEach((drawing, index) => {
+    let currentFramesIndex = framesIndexes[index];
+    // Clear the screen
+    optimizedDrawing += `FastLED.clear();`;
+    // loop over the colors
+    optimizedDrawing += `for(uint8_t i=0;i<${currentFramesIndex.colors};i++){`;
+    // loop over the pixels
+    optimizedDrawing += `for(uint8_t j=0;j<${currentFramesIndex.maxPixels};j++){`;
+    // if pixel is not 0, set the color
+    optimizedDrawing += `if(pgm_read_byte(&ppc${index}[i][j])!=0){`;
+    optimizedDrawing += `leds[pgm_read_byte(&ppc${index}[i][j])-1]=CRGB(pgm_read_byte(&dc${index}[i][0]),pgm_read_byte(&dc${index}[i][1]),pgm_read_byte(&dc${index}[i][2]));`;
+    optimizedDrawing += `}`;
+    optimizedDrawing += `}`;
+    optimizedDrawing += `}`;
+    // show pixels
+    optimizedDrawing += `FastLED.show();`;
+    // wait for a while
+    optimizedDrawing += `delay(100);`;
+  });
+  optimizedDrawing += `}`;
+
+  return optimizedDrawing;
+};
+
 // when clicking get drawing button, get the drawing and log to console
 saveDrawing.addEventListener("click", () => {
   drawingList.push({
@@ -126,10 +212,6 @@ const draw = (drawing) => {
     let cellColor = drawing[i];
     cell.style.backgroundColor = `rgb(${cellColor})`;
   }
-};
-
-const sleep = (ms) => {
-  return new Promise((resolve) => setTimeout(resolve, ms));
 };
 
 runDrawing.addEventListener("click", async () => {
@@ -147,181 +229,6 @@ runDrawing.addEventListener("click", async () => {
   }
 });
 
-const numberPositions = [
-  [
-    [1, 1, 1],
-    [1, 0, 1],
-    [1, 0, 1],
-    [1, 0, 1],
-    [1, 1, 1],
-  ],
-  [
-    [0, 0, 1],
-    [0, 0, 1],
-    [0, 0, 1],
-    [0, 0, 1],
-    [0, 0, 1],
-  ],
-  [
-    [1, 1, 1],
-    [0, 0, 1],
-    [1, 1, 1],
-    [1, 0, 0],
-    [1, 1, 1],
-  ],
-  [
-    [1, 1, 1],
-    [0, 0, 1],
-    [1, 1, 1],
-    [0, 0, 1],
-    [1, 1, 1],
-  ],
-  [
-    [1, 0, 1],
-    [1, 0, 1],
-    [1, 1, 1],
-    [0, 0, 1],
-    [0, 0, 1],
-  ],
-  [
-    [1, 1, 1],
-    [1, 0, 0],
-    [1, 1, 1],
-    [0, 0, 1],
-    [1, 1, 1],
-  ],
-  [
-    [1, 1, 1],
-    [1, 0, 0],
-    [1, 1, 1],
-    [1, 0, 1],
-    [1, 1, 1],
-  ],
-  [
-    [1, 1, 1],
-    [0, 0, 1],
-    [0, 0, 1],
-    [0, 0, 1],
-    [0, 0, 1],
-  ],
-  [
-    [1, 1, 1],
-    [1, 0, 1],
-    [1, 1, 1],
-    [1, 0, 1],
-    [1, 1, 1],
-  ],
-  [
-    [1, 1, 1],
-    [1, 0, 1],
-    [1, 1, 1],
-    [0, 0, 1],
-    [1, 1, 1],
-  ],
-];
-
-const hourPositions = {
-  hour_ten: [0, 0],
-  hour_unit: [0, 4],
-  minute_ten: [6, 0],
-  minute_unit: [6, 4],
-};
-
-const drawNumber = (number, hourPosition) => {
-  let rowStart = hourPosition[0];
-  let colStart = hourPosition[1];
-  let currentNumberPosition = numberPositions[number];
-  for (let i = 0; i < currentNumberPosition.length; i++) {
-    let row = currentNumberPosition[i];
-    for (let j = 0; j < row.length; j++) {
-      let cell = document.getElementById(
-        (rowStart + i) * COLUMNS + colStart + j
-      );
-      if (row[j] === 1) {
-        cell.style.backgroundColor = colorSelector.value;
-      }
-    }
-  }
-};
-
-// drawNumber(2, hourPositions["hour_ten"]);
-// drawNumber(9, hourPositions["hour_unit"]);
-// drawNumber(3, hourPositions["minute_ten"]);
-// drawNumber(2, hourPositions["minute_unit"]);
-const rainbow1 = () => {
-  var myRainbow = new Rainbow();
-  myRainbow.setSpectrum("#f5520c", "#f5e50c");
-  myRainbow.setNumberRange(0, ROWS);
-  return myRainbow;
-};
-
-const generateRainbow = (c1, c2, n) => {
-  var myRainbow = new Rainbow();
-  myRainbow.setSpectrum(c1, c2);
-  myRainbow.setNumberRange(0, n);
-  return myRainbow;
-};
-
-// convert hex color to rgb, return a string in the format rgb(r,g,b)
-const hexToRgb = (hex) => {
-  var result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-  return result
-    ? `rgb(${parseInt(result[1], 16)},${parseInt(result[2], 16)},${parseInt(
-        result[3],
-        16
-      )})`
-    : null;
-};
-
-const rgbToHex = (rgb) => {
-  let components = rgb.match(/\d+/g).map((x) => parseInt(x));
-  let r = components[0];
-  let g = components[1];
-  let b = components[2];
-  return (
-    "#" +
-    [r, g, b]
-      .map((x) => {
-        const hex = x.toString(16);
-        return hex.length === 1 ? "0" + hex : hex;
-      })
-      .join("")
-  );
-};
-
-const moveColorList = (colorList, direction) => {
-  // if direction is right, put the last color in the first position and move the others to the right
-  // if direction is left, put the first color in the last position and move the others to the left
-  if (direction === "right") {
-    colorList.unshift(colorList.pop());
-  } else {
-    colorList.push(colorList.shift());
-  }
-};
-
-const shadeColor = (col, amt) => {
-  col = col.replace(/^#/, "");
-  if (col.length === 3)
-    col = col[0] + col[0] + col[1] + col[1] + col[2] + col[2];
-
-  let [r, g, b] = col.match(/.{2}/g);
-  [r, g, b] = [
-    parseInt(r, 16) + amt,
-    parseInt(g, 16) + amt,
-    parseInt(b, 16) + amt,
-  ];
-
-  r = Math.max(Math.min(255, r), 0).toString(16);
-  g = Math.max(Math.min(255, g), 0).toString(16);
-  b = Math.max(Math.min(255, b), 0).toString(16);
-
-  const rr = (r.length < 2 ? "0" : "") + r;
-  const gg = (g.length < 2 ? "0" : "") + g;
-  const bb = (b.length < 2 ? "0" : "") + b;
-
-  return `#${rr}${gg}${bb}`;
-};
-
 const drawRainbow = async (
   color1,
   color2,
@@ -332,12 +239,12 @@ const drawRainbow = async (
   let colorNumber = ["l", "r"].indexOf(direction) != -1 ? COLUMNS : ROWS;
   let animation = [];
 
-  let rainbow = generateRainbow(color1, color2, colorNumber);
+  let rainbow = generateRainbow(color1, color2, colorNumber, true);
   let colorList = [];
   for (let i = 0; i < colorNumber; i++) {
     colorList.push(hexToRgb("#" + rainbow.colourAt(i)));
   }
-  colorList.push("rgb(0,0,0)");
+  // colorList.push("rgb(0,0,0)");
 
   let = currentIndex = 0;
   let = currentRepetition = 0;
@@ -382,24 +289,133 @@ const drawRainbow = async (
     await sleep(100);
   }
 
-  // if (repetitions === -1) {
-  //   while (true) {
-  //     applyCurrentColor();
-
-  //     // wait for 1 second
-  //     await sleep(100);
-  //   }
-  // } else {
-
-  // }
   return animation;
 };
 
 const runRainbows = async () => {
-  let animation1 = await drawRainbow("#f5520c", "#f5e50c", "d", 2, true);
-  console.log(animation1);
-  let animation2 = await drawRainbow("#0fff8b", "#0fbfff", "r", 0, true);
-  console.log(animation2);
+  // let animation1 = await drawRainbow("#f5520c", "#f5e50c", "d", 2, true);
+  // console.log(animation1);
+  let animation2 = await drawRainbow("#f5520c", "#f5e50c", "r", 1, true);
+  return animation2;
+};
+let frames = null;
+// runRainbows().then((res) => {
+//   let parsedFrames = [];
+//   res.forEach((frame) => {
+//     parsedFrames.push([frame.map((x) => x.split(",").map((y) => parseInt(y)))]);
+//   });
+//   // get the first 5 frames
+//   parsedFrames.slice(0, 5).forEach((frame) => {
+//     let f = JSON.stringify(frame).replace(/\[/g, "{").replace(/\]/g, "}");
+//     console.log(f);
+//   });
+//   console.log(parsedFrames.length);
+// });
+
+const drawNumber = (number, hourPosition, colorPallete, randomizeDark) => {
+  let rowStart = hourPosition[0];
+  let colStart = hourPosition[1];
+
+  let currentNumberPosition = numberPositions[number];
+  for (let i = 0; i < currentNumberPosition.length; i++) {
+    let row = currentNumberPosition[i];
+    for (let j = 0; j < row.length; j++) {
+      let cell = document.getElementById(
+        (rowStart + i) * COLUMNS + colStart + j
+      );
+      if (row[j] === 1) {
+        if (randomizeDark && Math.random() < 0.7) {
+          let current_color = colorPallete[rowStart + i][colStart + j];
+          cell.style.backgroundColor = hexToRgb(
+            shadeColor(rgbToHex(current_color), -15)
+          );
+        } else {
+          cell.style.backgroundColor = colorPallete[rowStart + i][colStart + j];
+        }
+      }
+    }
+  }
 };
 
-runRainbows();
+const animateNumbers = async (horizontal = false, direction = "right") => {
+  // let horizontal = false;
+  // let direction = "right";
+  let colorList = [];
+  let rainbow = generateRainbow("#f5520c", "#f5e50c", COLUMNS, true);
+  // let rainbow = generateRainbow("#0fbfff", "#0fbfff", COLUMNS, true);
+  for (let i = 0; i < ROWS; i++) {
+    colorList.push(hexToRgb("#" + rainbow.colourAt(i)));
+  }
+
+  let colorPallete = getRainbowMatrix(colorList, horizontal);
+  let prevDate = new Date();
+  let prevHourDigits = [
+    Math.floor(prevDate.getHours() / 10),
+    prevDate.getHours() % 10,
+  ];
+  let prevMinuteDigits = [
+    Math.floor(prevDate.getMinutes() / 10),
+    prevDate.getMinutes() % 10,
+  ];
+  while (true) {
+    let date = new Date();
+    let hour = date.getHours();
+    let minute = date.getMinutes();
+    // separate hours and minutes in digits
+    let hourDigits = [Math.floor(hour / 10), hour % 10];
+    let minuteDigits = [Math.floor(minute / 10), minute % 10];
+    // if any of the digits changed, paint each cell with black
+    if (
+      hourDigits[0] != prevHourDigits[0] ||
+      hourDigits[1] != prevHourDigits[1] ||
+      minuteDigits[0] != prevMinuteDigits[0] ||
+      minuteDigits[1] != prevMinuteDigits[1]
+    ) {
+      for (let i = 0; i < ROWS; i++) {
+        for (let j = 0; j < COLUMNS; j++) {
+          let cell = document.getElementById(i * COLUMNS + j);
+          cell.style.backgroundColor = "rgb(0,0,0)";
+        }
+      }
+
+      // update previous digits
+      prevHourDigits = hourDigits;
+      prevMinuteDigits = minuteDigits;
+    }
+    // log the seconds
+    console.log(date.getSeconds());
+
+    drawNumber(hourDigits[0], hourPositions["hour_ten"], colorPallete, true);
+    drawNumber(hourDigits[1], hourPositions["hour_unit"], colorPallete, true);
+    drawNumber(
+      minuteDigits[0],
+      hourPositions["minute_ten"],
+      colorPallete,
+      true
+    );
+    drawNumber(
+      minuteDigits[1],
+      hourPositions["minute_unit"],
+      colorPallete,
+      true
+    );
+    moveColorList(colorList, direction);
+    colorPallete = getRainbowMatrix(colorList, horizontal);
+    await sleep(100);
+  }
+};
+
+// when clicking downloadAnimation, download a txt with the content of generateOptimizedDrawing()
+
+downloadAnimation.addEventListener("click", () => {
+  // ask for the name of the file
+  let fileName = prompt("Enter the name of the file");
+  let animation = generateOptimizedDrawing();
+  let blob = new Blob([animation], { type: "text/plain" });
+  let url = window.URL.createObjectURL(blob);
+  let a = document.createElement("a");
+  a.href = url;
+  // a.download = "animation.txt";
+  a.download = fileName + ".txt";
+  a.click();
+});
