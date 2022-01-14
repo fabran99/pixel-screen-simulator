@@ -419,3 +419,36 @@ downloadAnimation.addEventListener("click", () => {
   a.download = fileName + ".txt";
   a.click();
 });
+
+const getPixelListString = () => {
+  let data = "";
+  for (let i = 0; i < ROWS * COLUMNS; i++) {
+    let cell = document.getElementById(i);
+    let cellColor = cell.style.backgroundColor;
+    let cellColorRgb = cellColor.match(/\d+/g).map((x) => parseInt(x));
+    // convert every element of cellColorRgb to hex
+    cellColorRgb = cellColorRgb.map((x) => x.toString(16));
+    // pad each element of cellColorRgb with 0 if it is less than 2 digits
+    cellColorRgb = cellColorRgb.map((x) => {
+      if (x.length < 2) {
+        return "0" + x;
+      } else {
+        return x;
+      }
+    });
+
+    let cellColorHex = cellColorRgb.join("");
+    // if cellColorHex is 000000, then it is black, so we ignore and continue
+    if (cellColorHex === "000000") {
+      continue;
+    }
+
+    // add the rgb values to the data string
+    let pixel = i.toString(16);
+    if (pixel.length < 2) {
+      pixel = "0" + pixel;
+    }
+    data += "<P" + pixel + cellColorHex + ">";
+  }
+  return data;
+};
