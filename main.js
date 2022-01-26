@@ -138,6 +138,8 @@ const generateOptimizedDrawing = () => {
       pixelsPerColor.push(currentColorPixels);
     });
 
+    console.log(pixelsPerColor);
+    console.log(uniqueColors);
     // generate a string for the optimized drawing for c++
     optimizedDrawing += `const uint8_t dc${dIndex}[${uniqueColors.length}][3] PROGMEM={`;
     uniqueColors.forEach((color, index) => {
